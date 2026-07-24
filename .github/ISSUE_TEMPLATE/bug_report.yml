@@ -1,0 +1,47 @@
+name: Bug 报告
+description: 报告可复现的客户端、计算或导出问题
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 实际发生了什么？期望行为是什么？
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 打开……
+        2. 输入……
+        3. 点击……
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本
+      placeholder: v0.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: source
+    attributes:
+      label: 运行方式
+      options:
+        - GitHub Release 客户端
+        - Python 源码
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 日志或截图
+      description: 请移除敏感数据后再上传。

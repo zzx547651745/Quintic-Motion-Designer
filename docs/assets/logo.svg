@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="180" viewBox="0 0 760 180" role="img" aria-labelledby="title description">
+  <title id="title">Quintic Motion Designer</title>
+  <desc id="description">五次多项式运动曲线设计器标志</desc>
+  <defs>
+    <linearGradient id="mark" x1="28" y1="142" x2="154" y2="28" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#22C55E"/>
+    </linearGradient>
+    <linearGradient id="word" x1="205" y1="45" x2="700" y2="145" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#172554"/>
+      <stop offset="1" stop-color="#334155"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="18" y="18" width="144" height="144" rx="36" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="3"/>
+  <path d="M38 122 C55 122 57 58 83 58 C109 58 111 122 142 122"
+        fill="none" stroke="url(#mark)" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="38" cy="122" r="7" fill="#2563EB"/>
+  <circle cx="83" cy="58" r="7" fill="#14B8A6"/>
+  <circle cx="142" cy="122" r="7" fill="#22C55E"/>
+
+  <text x="195" y="87" fill="url(#word)" font-family="Segoe UI, Arial, sans-serif"
+        font-size="48" font-weight="700" letter-spacing="-1">Quintic Motion</text>
+  <text x="198" y="132" fill="#2563EB" font-family="Segoe UI, Arial, sans-serif"
+        font-size="31" font-weight="600" letter-spacing="5">DESIGNER</text>
+</svg>

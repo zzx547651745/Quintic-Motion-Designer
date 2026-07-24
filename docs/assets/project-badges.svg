@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="688" height="28" viewBox="0 0 688 28" role="img" aria-labelledby="title description">
+  <title id="title">项目状态</title>
+  <desc id="description">Python 3.11 及以上、Windows 平台、版本 0.1.0、MIT 许可证、Windows CI</desc>
+  <style>
+    text {
+      fill: #fff;
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      dominant-baseline: middle;
+      text-anchor: middle;
+    }
+  </style>
+
+  <g>
+    <rect width="80" height="28" rx="5" fill="#334155"/>
+    <rect x="76" width="66" height="28" rx="5" fill="#3776AB"/>
+    <text x="40" y="14">Python</text>
+    <text x="109" y="14">3.11+</text>
+  </g>
+
+  <g transform="translate(150)">
+    <rect width="84" height="28" rx="5" fill="#334155"/>
+    <rect x="80" width="86" height="28" rx="5" fill="#0078D4"/>
+    <text x="42" y="14">Platform</text>
+    <text x="123" y="14">Windows</text>
+  </g>
+
+  <g transform="translate(324)">
+    <rect width="71" height="28" rx="5" fill="#334155"/>
+    <rect x="67" width="61" height="28" rx="5" fill="#22A06B"/>
+    <text x="35.5" y="14">Release</text>
+    <text x="97.5" y="14">v0.1.0</text>
+  </g>
+
+  <g transform="translate(460)">
+    <rect width="72" height="28" rx="5" fill="#334155"/>
+    <rect x="68" width="44" height="28" rx="5" fill="#D97706"/>
+    <text x="36" y="14">License</text>
+    <text x="90" y="14">MIT</text>
+  </g>
+
+  <g transform="translate(580)">
+    <rect width="39" height="28" rx="5" fill="#334155"/>
+    <rect x="35" width="73" height="28" rx="5" fill="#2563EB"/>
+    <text x="19.5" y="14">CI</text>
+    <text x="71.5" y="14">Windows</text>
+  </g>
+</svg>
