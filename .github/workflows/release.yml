@@ -50,7 +50,7 @@ jobs:
         run: .\scripts\package_release.ps1 -Version "${{ github.ref_name }}"
 
       - name: Preserve workflow artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: QuinticMotionDesigner-${{ github.ref_name }}-Windows-x64
           path: .artifacts/release/*
