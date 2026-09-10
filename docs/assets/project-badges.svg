@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="688" height="28" viewBox="0 0 688 28" role="img" aria-labelledby="title description">
   <title id="title">项目状态</title>
-  <desc id="description">Python 3.11 及以上、Windows 平台、版本 0.1.0、MIT 许可证、Windows CI</desc>
+  <desc id="description">Python 3.11 及以上、Windows 平台、版本 0.2.0、MIT 许可证、Windows CI</desc>
   <style>
     text {
       fill: #fff;
@@ -30,7 +30,7 @@
     <rect width="71" height="28" rx="5" fill="#334155"/>
     <rect x="67" width="61" height="28" rx="5" fill="#22A06B"/>
     <text x="35.5" y="14">Release</text>
-    <text x="97.5" y="14">v0.1.0</text>
+    <text x="97.5" y="14">v0.2.0</text>
   </g>
 
   <g transform="translate(460)">

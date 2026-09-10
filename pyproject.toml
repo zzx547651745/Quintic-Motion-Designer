@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "quintic-motion-designer"
-version = "0.1.0"
+version = "0.2.0"
 description = "A Windows desktop tool for designing C2-continuous quintic motion profiles."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -45,6 +45,7 @@ py-modules = [
     "desktop_app",
     "motion_project",
     "quintic_profile",
+    "watt_sixbar",
 ]
 
 [tool.black]

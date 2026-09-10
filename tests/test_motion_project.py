@@ -16,6 +16,7 @@ from motion_project import (
     Waypoint,
     handdrawn_example_project,
 )
+from watt_sixbar import WattSixBarParameters
 
 
 class MotionProjectTests(unittest.TestCase):
@@ -44,6 +45,41 @@ class MotionProjectTests(unittest.TestCase):
             expected_lengths.append((len(inputs), len(values)))
         self.assertEqual(expected_lengths, [(101, 101), (101, 101), (101, 101)])
 
+    def test_watt_chart_uses_common_curve_kind_and_round_trips(self) -> None:
+        chart = ChartConfig(
+            name="六杆机构",
+            algorithm="watt_sixbar",
+            watt_output="G_y",
+            watt_parameters=WattSixBarParameters(branch_g=-1),
+        )
+        lengths = []
+        for kind in ("position", "velocity", "acceleration"):
+            chart.curve_kind = kind
+            inputs, values = calculate_series(chart)
+            lengths.append((len(inputs), len(values)))
+        project = MotionProject(charts=[chart])
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "watt.qmp.json"
+            project.save(path)
+            loaded = MotionProject.load(path)
+        self.assertEqual(lengths, [(361, 361), (361, 361), (361, 361)])
+        self.assertEqual(loaded.charts[0].algorithm, "watt_sixbar")
+        self.assertEqual(loaded.charts[0].watt_output, "G_y")
+        self.assertEqual(loaded.charts[0].watt_parameters.branch_g, -1)
+
+    def test_version_one_project_is_migrated_to_quintic(self) -> None:
+        data = handdrawn_example_project().to_dict()
+        data["version"] = 1
+        for chart in data["charts"]:
+            for key in list(chart):
+                if key.startswith("watt_") or key == "algorithm":
+                    del chart[key]
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "legacy.qmp.json"
+            path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            loaded = MotionProject.load(path)
+        self.assertTrue(all(chart.algorithm == "quintic" for chart in loaded.charts))
+
     def test_chart_export_creates_nonempty_png(self) -> None:
         chart = handdrawn_example_project().charts[0]
         with tempfile.TemporaryDirectory() as folder:
@@ -61,6 +97,14 @@ class MotionProjectTests(unittest.TestCase):
         exported_inputs = {float(line.split(",", 1)[0]) for line in lines[1:]}
         self.assertTrue(set(chart.input_values).issubset(exported_inputs))
         self.assertGreater(len(lines), 101)
+
+    def test_common_csv_export_uses_watt_columns_for_watt_chart(self) -> None:
+        chart = ChartConfig(algorithm="watt_sixbar")
+        with tempfile.TemporaryDirectory() as folder:
+            path = export_chart_csv(chart, Path(folder) / "watt.csv")
+            header = path.read_text(encoding="utf-8-sig").splitlines()[0]
+        self.assertIn("G_位置X_mm", header)
+        self.assertIn("第二闭环传动角_deg", header)
 
     def test_all_series_share_the_same_sampling_axis(self) -> None:
         chart = handdrawn_example_project().charts[0]

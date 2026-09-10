@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -10,9 +11,11 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from quintic_profile import PiecewiseQuinticProfile
+from watt_sixbar import WattSixBarParameters
 
 CurveKind = Literal["position", "velocity", "acceleration"]
-PROJECT_VERSION = 1
+AlgorithmKind = Literal["quintic", "watt_sixbar"]
+PROJECT_VERSION = 2
 
 
 @dataclass
@@ -28,20 +31,60 @@ class ChartConfig:
     x_label: str = "输入角度 (°)"
     y_label: str = "位移 (°)"
     curve_kind: CurveKind = "position"
+    algorithm: AlgorithmKind = "quintic"
     show_original: bool = True
     show_grid: bool = True
     points: list[Waypoint] = field(
         default_factory=lambda: [Waypoint(0.0, 0.0), Waypoint(360.0, 45.0)]
     )
+    watt_parameters: WattSixBarParameters = field(default_factory=WattSixBarParameters)
+    watt_output: str = "G_x"
+    watt_start_deg: float = 0.0
+    watt_end_deg: float = 360.0
+    watt_samples: int = 361
+    watt_omega: float = 1.0
+    watt_alpha: float = 0.0
     chart_id: str = field(default_factory=lambda: uuid4().hex)
 
     def validate(self) -> None:
+        if self.algorithm not in {"quintic", "watt_sixbar"}:
+            raise ValueError(f"不支持的算法：{self.algorithm}")
         if self.curve_kind not in {"position", "velocity", "acceleration"}:
             raise ValueError(f"不支持的曲线类型：{self.curve_kind}")
-        if len(self.points) < 2:
-            raise ValueError("每张图至少需要两个拐点")
-        # Reuse the numerical engine as the single source of point validation.
-        PiecewiseQuinticProfile(self.input_values, self.output_values)
+        if self.algorithm == "quintic":
+            if len(self.points) < 2:
+                raise ValueError("每张五次多项式图至少需要两个拐点")
+            PiecewiseQuinticProfile(self.input_values, self.output_values)
+            return
+        self.watt_parameters.validate()
+        if self.watt_output not in {
+            "B_x",
+            "B_y",
+            "C_x",
+            "C_y",
+            "D_x",
+            "D_y",
+            "E_x",
+            "E_y",
+            "G_x",
+            "G_y",
+            "psi",
+        }:
+            raise ValueError(f"不支持的 Watt 输出：{self.watt_output}")
+        if self.watt_end_deg <= self.watt_start_deg:
+            raise ValueError("Watt 终止角必须大于起始角")
+        if not 2 <= self.watt_samples <= 10001:
+            raise ValueError("Watt 采样点数必须在 2～10001 之间")
+        if not all(
+            math.isfinite(value)
+            for value in (
+                self.watt_start_deg,
+                self.watt_end_deg,
+                self.watt_omega,
+                self.watt_alpha,
+            )
+        ):
+            raise ValueError("Watt 输入角和角速度参数必须是有限数值")
 
     @property
     def input_values(self) -> list[float]:
@@ -63,15 +106,24 @@ class ChartConfig:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ChartConfig:
         points = [Waypoint(**point) for point in data.get("points", [])]
+        watt_data = data.get("watt_parameters", {})
         chart = cls(
             name=str(data.get("name", "新图")),
             title=str(data.get("title", "五次多项式运动曲线")),
             x_label=str(data.get("x_label", "输入角度 (°)")),
             y_label=str(data.get("y_label", "位移 (°)")),
             curve_kind=data.get("curve_kind", "position"),
+            algorithm=data.get("algorithm", "quintic"),
             show_original=bool(data.get("show_original", True)),
             show_grid=bool(data.get("show_grid", True)),
             points=points,
+            watt_parameters=WattSixBarParameters(**watt_data),
+            watt_output=str(data.get("watt_output", "G_x")),
+            watt_start_deg=float(data.get("watt_start_deg", 0.0)),
+            watt_end_deg=float(data.get("watt_end_deg", 360.0)),
+            watt_samples=int(data.get("watt_samples", 361)),
+            watt_omega=float(data.get("watt_omega", 1.0)),
+            watt_alpha=float(data.get("watt_alpha", 0.0)),
             chart_id=str(data.get("chart_id") or uuid4().hex),
         )
         chart.validate()
@@ -107,7 +159,7 @@ class MotionProject:
     @classmethod
     def load(cls, path: str | Path) -> MotionProject:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
-        if data.get("version") != PROJECT_VERSION:
+        if data.get("version") not in {1, PROJECT_VERSION}:
             raise ValueError(f"不支持的项目文件版本：{data.get('version')}")
         project = cls(
             name=str(data.get("name", "未命名项目")),

@@ -16,6 +16,13 @@ from motion_project import (
     Waypoint,
     handdrawn_example_project,
 )
+from watt_sixbar import WattSixBarParameters
+
+ALGORITHM_LABELS = {
+    "五次多项式": "quintic",
+    "Watt 六杆机构": "watt_sixbar",
+}
+ALGORITHM_NAMES = {value: key for key, value in ALGORITHM_LABELS.items()}
 
 KIND_LABELS = {
     "位移": "position",
@@ -23,6 +30,32 @@ KIND_LABELS = {
     "加速度（对横轴二阶求导）": "acceleration",
 }
 KIND_NAMES = {value: key for key, value in KIND_LABELS.items()}
+WATT_PARAMETER_LABELS = (
+    ("frame", "AF / L₀"),
+    ("ac", "AC / a"),
+    ("ab", "AB / b"),
+    ("beta_deg", "β (°)"),
+    ("cd", "CD / L₂"),
+    ("bg", "BG / L₃"),
+    ("df", "DF / L₄"),
+    ("ge", "GE / L₅"),
+    ("fe", "FE / e"),
+    ("delta_deg", "δ (°)"),
+)
+WATT_OUTPUT_LABELS = {
+    "B 点 X 分量": "B_x",
+    "B 点 Y 分量": "B_y",
+    "C 点 X 分量": "C_x",
+    "C 点 Y 分量": "C_y",
+    "D 点 X 分量": "D_x",
+    "D 点 Y 分量": "D_y",
+    "E 点 X 分量": "E_x",
+    "E 点 Y 分量": "E_y",
+    "G 点 X 分量": "G_x",
+    "G 点 Y 分量": "G_y",
+    "摇杆角 ψ": "psi",
+}
+WATT_OUTPUT_NAMES = {value: key for key, value in WATT_OUTPUT_LABELS.items()}
 
 
 class ChineseNavigationToolbar(NavigationToolbar2Tk):
@@ -142,7 +175,7 @@ class ChineseNavigationToolbar(NavigationToolbar2Tk):
 class MotionDesignerApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        self.root.title("五次多项式运动曲线设计器")
+        self.root.title("运动曲线设计器")
         self.root.geometry("1420x860")
         self.root.minsize(1120, 700)
 
@@ -172,11 +205,25 @@ class MotionDesignerApp:
         self.title_var = tk.StringVar()
         self.x_label_var = tk.StringVar()
         self.y_label_var = tk.StringVar()
+        self.algorithm_var = tk.StringVar()
         self.kind_var = tk.StringVar()
         self.original_var = tk.BooleanVar(value=True)
         self.grid_var = tk.BooleanVar(value=True)
         self.point_x_var = tk.StringVar()
         self.point_y_var = tk.StringVar()
+        defaults = WattSixBarParameters()
+        self.watt_parameter_vars = {
+            name: tk.StringVar(value=f"{getattr(defaults, name):g}")
+            for name, _label in WATT_PARAMETER_LABELS
+        }
+        self.watt_branch_d_var = tk.StringVar(value="+1")
+        self.watt_branch_g_var = tk.StringVar(value="+1")
+        self.watt_start_var = tk.StringVar(value="0")
+        self.watt_end_var = tk.StringVar(value="360")
+        self.watt_samples_var = tk.StringVar(value="361")
+        self.watt_omega_var = tk.StringVar(value="1")
+        self.watt_alpha_var = tk.StringVar(value="0")
+        self.watt_output_var = tk.StringVar(value="G 点 X 分量")
         self.status_var = tk.StringVar(value="就绪")
 
     def _create_menu(self) -> None:
@@ -263,8 +310,17 @@ class MotionDesignerApp:
         self._labeled_entry(properties, "横轴文字", self.x_label_var, 2)
         self._labeled_entry(properties, "纵轴文字", self.y_label_var, 3)
 
+        ttk.Label(properties, text="算法").grid(row=4, column=0, sticky=tk.W, pady=4)
+        algorithm_box = ttk.Combobox(
+            properties,
+            textvariable=self.algorithm_var,
+            values=list(ALGORITHM_LABELS),
+            state="readonly",
+            width=27,
+        )
+        algorithm_box.grid(row=4, column=1, sticky=tk.EW, padx=(8, 0), pady=4)
         ttk.Label(properties, text="曲线类型").grid(
-            row=4, column=0, sticky=tk.W, pady=4
+            row=5, column=0, sticky=tk.W, pady=4
         )
         kind_box = ttk.Combobox(
             properties,
@@ -273,17 +329,27 @@ class MotionDesignerApp:
             state="readonly",
             width=27,
         )
-        kind_box.grid(row=4, column=1, sticky=tk.EW, padx=(8, 0), pady=4)
+        kind_box.grid(row=5, column=1, sticky=tk.EW, padx=(8, 0), pady=4)
         properties.columnconfigure(1, weight=1)
-        ttk.Checkbutton(
+        self.original_check = ttk.Checkbutton(
             properties, text="位移图显示原始折线", variable=self.original_var
-        ).grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        )
+        self.original_check.grid(
+            row=6, column=0, columnspan=2, sticky=tk.W, pady=(5, 0)
+        )
         ttk.Checkbutton(properties, text="显示网格", variable=self.grid_var).grid(
-            row=6, column=0, columnspan=2, sticky=tk.W
+            row=7, column=0, columnspan=2, sticky=tk.W
         )
 
-        points = ttk.LabelFrame(parent, text="拐点（横轴值必须递增）", padding=8)
-        points.pack(fill=tk.BOTH, expand=True)
+        parameter_area = ttk.Frame(parent)
+        parameter_area.pack(fill=tk.BOTH, expand=True)
+        parameter_area.rowconfigure(0, weight=1)
+        parameter_area.columnconfigure(0, weight=1)
+        points = ttk.LabelFrame(
+            parameter_area, text="拐点（横轴值必须递增）", padding=8
+        )
+        points.grid(row=0, column=0, sticky=tk.NSEW)
+        self.points_frame = points
         self.point_tree = ttk.Treeview(
             points,
             columns=("x", "y"),
@@ -319,6 +385,61 @@ class MotionDesignerApp:
         ttk.Button(point_actions, text="删除选中", command=self.delete_point).pack(
             side=tk.LEFT
         )
+        self._create_watt_editor(parameter_area)
+
+    def _create_watt_editor(self, parent: ttk.Frame) -> None:
+        frame = ttk.LabelFrame(parent, text="Watt 六杆机构参数", padding=8)
+        frame.grid(row=0, column=0, sticky=tk.NSEW)
+        self.watt_frame = frame
+        for index, (name, label) in enumerate(WATT_PARAMETER_LABELS):
+            row = index // 2
+            column = (index % 2) * 2
+            ttk.Label(frame, text=label).grid(
+                row=row, column=column, sticky=tk.W, padx=(0, 4), pady=3
+            )
+            ttk.Entry(
+                frame, textvariable=self.watt_parameter_vars[name], width=11
+            ).grid(row=row, column=column + 1, sticky=tk.EW, padx=(0, 10), pady=3)
+
+        controls = (
+            ("D 装配分支", self.watt_branch_d_var, ("+1", "-1")),
+            ("G 装配分支", self.watt_branch_g_var, ("+1", "-1")),
+            ("起始角 (°)", self.watt_start_var, None),
+            ("终止角 (°)", self.watt_end_var, None),
+            ("采样点数", self.watt_samples_var, None),
+            ("预览输出", self.watt_output_var, tuple(WATT_OUTPUT_LABELS)),
+            ("角速度 (rad/s)", self.watt_omega_var, None),
+            ("角加速度 (rad/s²)", self.watt_alpha_var, None),
+        )
+        start_row = (len(WATT_PARAMETER_LABELS) + 1) // 2
+        for index, (label, variable, values) in enumerate(controls):
+            row = start_row + index // 2
+            column = (index % 2) * 2
+            ttk.Label(frame, text=label).grid(
+                row=row, column=column, sticky=tk.W, padx=(0, 4), pady=3
+            )
+            if values is None:
+                widget: ttk.Widget = ttk.Entry(frame, textvariable=variable, width=11)
+            else:
+                widget = ttk.Combobox(
+                    frame,
+                    textvariable=variable,
+                    values=values,
+                    state="readonly",
+                    width=10,
+                )
+            widget.grid(row=row, column=column + 1, sticky=tk.EW, padx=(0, 10), pady=3)
+        action_row = start_row + (len(controls) + 1) // 2
+        ttk.Button(frame, text="应用参数并刷新", command=self.refresh_preview).grid(
+            row=action_row, column=0, columnspan=4, sticky=tk.EW, pady=(8, 3)
+        )
+        ttk.Label(
+            frame,
+            text="固定 A=(0,0)，F=(AF,0)；杆长单位为 mm。",
+            foreground="#475569",
+        ).grid(row=action_row + 1, column=0, columnspan=4, sticky=tk.W, pady=(4, 0))
+        for column in (1, 3):
+            frame.columnconfigure(column, weight=1)
 
     @staticmethod
     def _labeled_entry(
@@ -348,7 +469,6 @@ class MotionDesignerApp:
         ttk.Button(header, text="批量数据 CSV", command=self.export_all_data).pack(
             side=tk.RIGHT
         )
-
         self.figure = Figure(figsize=(9, 6), dpi=100)
         self.canvas = FigureCanvasTkAgg(self.figure, master=parent)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
@@ -366,6 +486,7 @@ class MotionDesignerApp:
             self.title_var,
             self.x_label_var,
             self.y_label_var,
+            self.algorithm_var,
             self.kind_var,
             self.original_var,
             self.grid_var,
@@ -380,7 +501,12 @@ class MotionDesignerApp:
     def _schedule_metadata_update(self, *_args: object) -> None:
         if self._loading_form:
             return
-        self._sync_metadata()
+        self._update_algorithm_panel()
+        try:
+            self._sync_metadata()
+        except ValueError as exc:
+            self.status_var.set(f"参数尚未生效：{exc}")
+            return
         if self._preview_job is not None:
             self.root.after_cancel(self._preview_job)
         self._preview_job = self.root.after(300, self.refresh_preview)
@@ -391,9 +517,28 @@ class MotionDesignerApp:
         chart.title = self.title_var.get()
         chart.x_label = self.x_label_var.get()
         chart.y_label = self.y_label_var.get()
+        chart.algorithm = ALGORITHM_LABELS.get(self.algorithm_var.get(), "quintic")
         chart.curve_kind = KIND_LABELS.get(self.kind_var.get(), "position")
         chart.show_original = self.original_var.get()
         chart.show_grid = self.grid_var.get()
+        if chart.algorithm == "watt_sixbar":
+            chart.watt_parameters = WattSixBarParameters(
+                **{
+                    name: float(variable.get())
+                    for name, variable in self.watt_parameter_vars.items()
+                },
+                branch_d=int(self.watt_branch_d_var.get()),
+                branch_g=int(self.watt_branch_g_var.get()),
+            )
+            chart.watt_output = WATT_OUTPUT_LABELS.get(
+                self.watt_output_var.get(), "G_x"
+            )
+            chart.watt_start_deg = float(self.watt_start_var.get())
+            chart.watt_end_deg = float(self.watt_end_var.get())
+            chart.watt_samples = int(self.watt_samples_var.get())
+            chart.watt_omega = float(self.watt_omega_var.get())
+            chart.watt_alpha = float(self.watt_alpha_var.get())
+            chart.validate()
         if self.chart_list.size() > self.current_index:
             self.chart_list.delete(self.current_index)
             self.chart_list.insert(self.current_index, chart.name)
@@ -408,13 +553,35 @@ class MotionDesignerApp:
             self.title_var.set(chart.title)
             self.x_label_var.set(chart.x_label)
             self.y_label_var.set(chart.y_label)
+            self.algorithm_var.set(ALGORITHM_NAMES[chart.algorithm])
             self.kind_var.set(KIND_NAMES[chart.curve_kind])
             self.original_var.set(chart.show_original)
             self.grid_var.set(chart.show_grid)
+            for name, _label in WATT_PARAMETER_LABELS:
+                self.watt_parameter_vars[name].set(
+                    f"{getattr(chart.watt_parameters, name):g}"
+                )
+            self.watt_branch_d_var.set(f"{chart.watt_parameters.branch_d:+d}")
+            self.watt_branch_g_var.set(f"{chart.watt_parameters.branch_g:+d}")
+            self.watt_start_var.set(f"{chart.watt_start_deg:g}")
+            self.watt_end_var.set(f"{chart.watt_end_deg:g}")
+            self.watt_samples_var.set(str(chart.watt_samples))
+            self.watt_omega_var.set(f"{chart.watt_omega:g}")
+            self.watt_alpha_var.set(f"{chart.watt_alpha:g}")
+            self.watt_output_var.set(WATT_OUTPUT_NAMES[chart.watt_output])
             self._reload_points()
+            self._update_algorithm_panel()
         finally:
             self._loading_form = False
         self.refresh_preview()
+
+    def _update_algorithm_panel(self) -> None:
+        if ALGORITHM_LABELS.get(self.algorithm_var.get()) == "watt_sixbar":
+            self.watt_frame.tkraise()
+            self.original_check.state(["disabled"])
+        else:
+            self.points_frame.tkraise()
+            self.original_check.state(["!disabled"])
 
     def _reload_chart_list(self, select: int) -> None:
         self.chart_list.delete(0, tk.END)
@@ -543,10 +710,18 @@ class MotionDesignerApp:
             self._sync_metadata()
             render_chart(self.current_chart, self.figure)
             self.canvas.draw_idle()
-            point_count = len(self.current_chart.points)
-            self.status_var.set(
-                f"正在预览：{self.current_chart.name}" f"（{point_count} 个拐点）"
-            )
+            if self.current_chart.algorithm == "watt_sixbar":
+                parameters = self.current_chart.watt_parameters
+                grashof = "满足" if parameters.grashof_satisfied else "不满足"
+                self.status_var.set(
+                    f"正在预览：{self.current_chart.name}（Watt 六杆，"
+                    f"Grashof {grashof}）"
+                )
+            else:
+                point_count = len(self.current_chart.points)
+                self.status_var.set(
+                    f"正在预览：{self.current_chart.name}（{point_count} 个拐点）"
+                )
         except (
             Exception
         ) as exc:  # GUI boundary: show validation failures without crashing.
@@ -701,7 +876,7 @@ class MotionDesignerApp:
             self.project_path.name if self.project_path else self.project.name
         )
         marker = " *" if changed else ""
-        self.root.title(f"{project_name}{marker} - 五次多项式运动曲线设计器")
+        self.root.title(f"{project_name}{marker} - 运动曲线设计器")
 
 
 def main() -> None:

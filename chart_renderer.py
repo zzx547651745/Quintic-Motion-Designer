@@ -12,6 +12,7 @@ from matplotlib.figure import Figure
 
 from motion_project import ChartConfig
 from quintic_profile import PiecewiseQuinticProfile
+from watt_sixbar import export_watt_sixbar_csv, solve_watt_sixbar
 
 CURVE_COLORS = {
     "position": "#2563eb",
@@ -35,6 +36,23 @@ def calculate_all_series(
     chart: ChartConfig, sample_count: int = 1601
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     chart.validate()
+    if chart.algorithm == "watt_sixbar":
+        inputs = np.linspace(
+            chart.watt_start_deg, chart.watt_end_deg, chart.watt_samples
+        )
+        result = solve_watt_sixbar(
+            chart.watt_parameters, inputs, chart.watt_omega, chart.watt_alpha
+        )
+        if chart.watt_output == "psi":
+            return (
+                inputs,
+                result.psi_deg,
+                result.psi_velocity_deg_s,
+                result.psi_acceleration_deg_s2,
+            )
+        point, axis = chart.watt_output.split("_", 1)
+        position, velocity, acceleration = result.point_series(point, axis)
+        return inputs, position, velocity, acceleration
     # Always include every user-entered waypoint even when it does not fall on
     # the uniform sampling grid used between waypoints.
     uniform_inputs = np.linspace(
@@ -67,7 +85,12 @@ def render_chart(chart: ChartConfig, figure: Figure | None = None) -> Figure:
     figure.clear()
     axis = figure.add_subplot(111)
 
-    if chart.show_original and chart.curve_kind == "position":
+    show_original = (
+        chart.algorithm == "quintic"
+        and chart.show_original
+        and chart.curve_kind == "position"
+    )
+    if show_original:
         axis.plot(
             chart.input_values,
             chart.output_values,
@@ -84,23 +107,24 @@ def render_chart(chart: ChartConfig, figure: Figure | None = None) -> Figure:
         values,
         color=CURVE_COLORS[chart.curve_kind],
         linewidth=2.4,
-        label="五次多项式",
+        label="五次多项式" if chart.algorithm == "quintic" else "Watt 六杆机构",
     )
-    for point in chart.points:
-        axis.axvline(
-            point.input_value,
-            color="#9ca3af",
-            linestyle=":",
-            linewidth=0.8,
-            alpha=0.8,
-        )
+    if chart.algorithm == "quintic":
+        for point in chart.points:
+            axis.axvline(
+                point.input_value,
+                color="#9ca3af",
+                linestyle=":",
+                linewidth=0.8,
+                alpha=0.8,
+            )
     axis.axhline(0.0, color="#111827", linewidth=0.8)
     axis.set_title(chart.title, fontsize=14, pad=12)
     axis.set_xlabel(chart.x_label)
     axis.set_ylabel(chart.y_label)
     axis.format_coord = lambda x, y: f"横轴 = {x:.4g}，纵轴 = {y:.4g}"
     axis.grid(chart.show_grid, alpha=0.25)
-    if chart.show_original and chart.curve_kind == "position":
+    if show_original:
         axis.legend(loc="best")
     figure.tight_layout()
     return figure
@@ -120,6 +144,15 @@ def export_chart_csv(
     """Export input, position, velocity and acceleration as Excel-friendly CSV."""
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
+    if chart.algorithm == "watt_sixbar":
+        chart.validate()
+        inputs = np.linspace(
+            chart.watt_start_deg, chart.watt_end_deg, chart.watt_samples
+        )
+        result = solve_watt_sixbar(
+            chart.watt_parameters, inputs, chart.watt_omega, chart.watt_alpha
+        )
+        return export_watt_sixbar_csv(result, target)
     inputs, position, velocity, acceleration = calculate_all_series(chart, sample_count)
     with target.open("w", encoding="utf-8-sig", newline="") as file:
         writer = csv.writer(file)

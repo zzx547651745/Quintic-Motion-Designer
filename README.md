@@ -6,7 +6,7 @@
 
 面向 Windows 的五次多项式运动曲线设计与数据导出工具。
 
-![Python 3.11+ · Windows · Release v0.1.0 · MIT · Windows CI](docs/assets/project-badges.svg)
+![Python 3.11+ · Windows · Release v0.2.0 · MIT · Windows CI](docs/assets/project-badges.svg)
 
 [核心功能](#-核心功能) ·
 [快速开始](#-快速开始) ·
@@ -34,6 +34,7 @@
 | **完整图表配置** | 修改图标题、横轴文字、纵轴文字，控制网格与原始折线显示 |
 | **图片与数据导出** | 导出 PNG、JPG、SVG、PDF，以及包含三类曲线数据的 CSV |
 | **项目持久化** | 保存和打开 `.qmp.json` 项目文件，继续编辑全部图表 |
+| **Watt 六杆分析** | 配置 Watt 型单自由度六杆机构，求解各点位置、速度、加速度与两级传动角 |
 
 ## 🚀 快速开始
 
@@ -92,6 +93,14 @@ CSV 文件包含：
 
 所有用户输入的拐点都会被精确纳入导出采样点。
 
+### Watt 六杆机构数据
+
+在图属性的 **算法** 中选择 **Watt 六杆机构**，主窗口左侧会切换为六杆参数区。可配置 `AF、AC、AB、β、CD、BG、DF、GE、FE、δ`、输入角速度、输入角加速度和两个装配分支；图标题、坐标轴文字、曲线类型和网格与五次多项式算法共用。
+
+窗口中的默认尺寸仅用于演示整周求解，并非实际机构的最优设计值；工程使用时请替换为实测尺寸或优化结果。
+
+程序可预览 B/C/D/E/G 点指定方向的位移、速度、加速度或摇杆角 `ψ`，并将全部点的位置、速度、加速度、摇杆角及两级传动角导出为 CSV。若当前尺寸无法闭合或雅可比矩阵接近奇异，界面会指出对应输入角。
+
 ## 📐 数学模型
 
 相邻拐点 `(x₀, y₀)` 与 `(x₁, y₁)` 之间使用归一化最小跃度五次式：
@@ -119,6 +128,7 @@ s″(0) = s″(1) = 0
 | `motion_project.py` | 多图项目模型和 JSON 持久化 |
 | `quintic_profile.py` | GUI 无关的五次轨迹数值引擎 |
 | `chart_renderer.py` | 预览、图片导出和 CSV 导出 |
+| `watt_sixbar.py` | Watt 六杆机构位置、速度、加速度和传动角求解 |
 | `tests/` | 数值、项目模型和客户端确定性测试 |
 | `scripts/` | Windows 构建与 Release 归档 |
 | `.github/workflows/` | CI 和标签驱动的自动发布 |
@@ -149,7 +159,7 @@ python -m unittest discover -s tests -v
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\package_release.ps1 -Version v0.1.0
+powershell -ExecutionPolicy Bypass -File .\scripts\package_release.ps1 -Version v0.2.0
 ```
 
 构建结果保存在 Git 忽略的 `.artifacts/` 目录中。推送与 `pyproject.toml` 版本一致的 `vX.Y.Z` 标签后，GitHub Actions 会自动测试、构建、校验并发布 Windows Release。

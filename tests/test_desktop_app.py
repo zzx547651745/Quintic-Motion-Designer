@@ -1,6 +1,6 @@
 import unittest
 
-from desktop_app import ChineseNavigationToolbar
+from desktop_app import ALGORITHM_LABELS, WATT_OUTPUT_LABELS, ChineseNavigationToolbar
 
 
 class DesktopAppLocalizationTests(unittest.TestCase):
@@ -14,6 +14,11 @@ class DesktopAppLocalizationTests(unittest.TestCase):
         )
         self.assertEqual(visible_items[0][3], "home")
         self.assertEqual(visible_items[0][1], "恢复默认视图")
+
+    def test_watt_sixbar_output_labels_are_chinese(self) -> None:
+        self.assertEqual(ALGORITHM_LABELS["Watt 六杆机构"], "watt_sixbar")
+        self.assertEqual(WATT_OUTPUT_LABELS["G 点 X 分量"], "G_x")
+        self.assertEqual(WATT_OUTPUT_LABELS["摇杆角 ψ"], "psi")
 
 
 if __name__ == "__main__":
